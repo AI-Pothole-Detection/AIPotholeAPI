@@ -1,6 +1,8 @@
 import express from 'express';
 
 import { createMissingBodyElement, notImplementedResponse } from './responses';
+import { supabase } from './supabase';
+import { isConstructorDeclaration } from 'typescript';
 
 const app = express();
 const port = 3000;
@@ -19,7 +21,7 @@ interface ReportBody {
 // Endpoint for reporting a pothole
 // Critically, this may or may not create a new Pothole resource
 // hence it being not very RESTful in its name
-app.post('/potholes/report', (req, res) => {
+app.post('/potholes/report', async (req, res) => {
     const body: ReportBody = req.body;
 
     const { longitude: rawLongitude, latitude: rawLatitude } = body;
@@ -41,6 +43,25 @@ app.post('/potholes/report', (req, res) => {
         res.send(body);
         return;
     }
+
+    const rpcRes = await supabase.rpc('nearby_potholes', {
+        lat: latitude,
+        long: longitude,
+    });
+
+    console.log(rpcRes);
+
+    // So here,
+    // we should really check for an existing Pothole resource
+    // and if it exists, increment the count and reset the counter
+    // BUT! we aren't going to do that,
+    // Instead I'm just going to create a row :)
+
+    // const { data, error } = await supabase
+    //     .from('potholes')
+    //     .insert({ location: `POINT(${longitude} ${latitude})` })
+    //     .select('*');
+    // console.log(data, error);
 
     res.status(501);
     res.send(notImplementedResponse);
