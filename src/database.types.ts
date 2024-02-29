@@ -41,6 +41,12 @@ export type Database = {
             [_ in never]: never;
         };
         Functions: {
+            increment: {
+                Args: {
+                    id_to_increment: number;
+                };
+                Returns: undefined;
+            };
             nearby_potholes: {
                 Args: {
                     lat: number;

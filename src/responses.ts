@@ -3,6 +3,8 @@
  *
  * code 0 : Not implemented
  * code 1 : Missing parameter
+ * code 2 : Successfully created new pothole from report
+ * code 3 : Successfully incremented pothole report count from report
  */
 
 interface ResponseInfo {
@@ -10,7 +12,7 @@ interface ResponseInfo {
     body: ResponseBody;
 }
 
-type ResponseBody = ErrorResponseBody;
+type ResponseBody = ErrorResponseBody | SuccessResponseBody;
 
 interface ErrorResponseBody {
     type: 'error';
@@ -20,7 +22,55 @@ interface ErrorResponseBody {
     };
 }
 
-export function createMissingBodyElement(
+interface SuccessResponseBody {
+    type: 'success';
+    data: {
+        code: number;
+        message: string;
+        data?: any;
+    };
+}
+
+export function createPotholeCreationSuccess(id: number): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'success',
+            data: {
+                code: 2,
+                message: `Successfully created pothole with id ${id}.`,
+            },
+        },
+    };
+}
+
+export function createIncrementSuccess(id: number): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'success',
+            data: {
+                code: 3,
+                message: `Successfully incremented pothole with id ${id}.`,
+            },
+        },
+    };
+}
+
+export function createSupabaseError(): ResponseInfo {
+    return {
+        status: 500,
+        body: {
+            type: 'error',
+            error: {
+                code: 2,
+                message: "Something went wrong on Supabase's end.",
+            },
+        },
+    };
+}
+
+export function createMissingBodyElementError(
     missingParameter: string
 ): ResponseInfo {
     return {

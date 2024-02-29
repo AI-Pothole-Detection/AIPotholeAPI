@@ -1,8 +1,14 @@
 import express from 'express';
 
-import { createMissingBodyElement, notImplementedResponse } from './responses';
+import {
+    createIncrementSuccess,
+    createMissingBodyElementError,
+    createPotholeCreationSuccess,
+    createSupabaseError,
+    notImplementedResponse,
+} from './responses';
 import { supabase } from './supabase';
-import { isConstructorDeclaration } from 'typescript';
+import { CLOSENESS_THRESHOLD_METERS } from './constants';
 
 const app = express();
 const port = 3000;
@@ -22,51 +28,113 @@ interface ReportBody {
 // Critically, this may or may not create a new Pothole resource
 // hence it being not very RESTful in its name
 app.post('/potholes/report', async (req, res) => {
-    const body: ReportBody = req.body;
+    const reqBody: ReportBody = req.body;
 
-    const { longitude: rawLongitude, latitude: rawLatitude } = body;
+    const { longitude: rawLongitude, latitude: rawLatitude } = reqBody;
 
     // Now we gotta manually verify the types like goddamn cave men
     const longitude = Number(rawLongitude);
     const latitude = Number(rawLatitude);
 
     if (Number.isNaN(longitude)) {
-        const { status, body } = createMissingBodyElement('longitude');
+        const { status, body } = createMissingBodyElementError('longitude');
         res.status(status);
         res.send(body);
         return;
     }
 
     if (Number.isNaN(latitude)) {
-        const { status, body } = createMissingBodyElement('latitude');
+        const { status, body } = createMissingBodyElementError('latitude');
         res.status(status);
         res.send(body);
         return;
     }
 
-    const rpcRes = await supabase.rpc('nearby_potholes', {
-        lat: latitude,
-        long: longitude,
-    });
+    const closest = await getClosestPothole(latitude, longitude);
 
-    console.log(rpcRes);
+    if (closest === undefined) {
+        const { status, body } = createSupabaseError();
+        res.status(status);
+        res.send(body);
+        return;
+    }
 
-    // So here,
-    // we should really check for an existing Pothole resource
-    // and if it exists, increment the count and reset the counter
-    // BUT! we aren't going to do that,
-    // Instead I'm just going to create a row :)
+    // Now that we have our closest pothole, we check if it is within 150 meters
+    // If it is, we will simply increment the number of reports on that location,
+    // and then end the request
+    if (closest.distance <= CLOSENESS_THRESHOLD_METERS) {
+        const incrementResult = await incrementPothole(closest.id);
+        if (incrementResult === null) {
+            const { status, body } = createSupabaseError();
+            res.status(status);
+            res.send(body);
+            return;
+        }
+        const { status, body } = createIncrementSuccess(closest.id);
+        res.status(status);
+        res.send(body);
+        return;
+    }
 
-    // const { data, error } = await supabase
-    //     .from('potholes')
-    //     .insert({ location: `POINT(${longitude} ${latitude})` })
-    //     .select('*');
-    // console.log(data, error);
+    // If we made it here, we need to go ahead and create a new pothole resource
+    // since one within the threshold does not exist
+    const potholeId = await createNewPothole(longitude, latitude);
 
-    res.status(501);
-    res.send(notImplementedResponse);
+    if (potholeId === null) {
+        const { status, body } = createSupabaseError();
+        res.status(status);
+        res.send(body);
+        return;
+    }
+
+    const { status, body } = createPotholeCreationSuccess(potholeId);
+    res.status(status);
+    res.send(body);
     return;
 });
+
+async function createNewPothole(
+    long: number,
+    lat: number
+): Promise<number | null> {
+    const { data, error } = await supabase
+        .from('potholes')
+        .insert({ location: `POINT(${long} ${lat})` })
+        .select('id');
+
+    if (error) {
+        return null;
+    }
+
+    return data[0].id;
+}
+
+async function incrementPothole(id: number): Promise<void | null> {
+    const { data, error } = await supabase.rpc('increment', {
+        id_to_increment: id,
+    });
+
+    if (error) {
+        return null;
+    }
+}
+
+async function getClosestPothole(lat: number, long: number) {
+    const { data, error } = await supabase.rpc('nearby_potholes', {
+        lat,
+        long,
+    });
+
+    if (error) {
+        return undefined;
+    }
+
+    const { id, dist_meters } = data[0];
+    return {
+        id,
+        distance: dist_meters,
+    };
+}
 
 app.listen(port, () => {
     console.log(`AI Pothole API listening on port ${port}`);
