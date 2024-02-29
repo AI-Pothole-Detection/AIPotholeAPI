@@ -2,9 +2,11 @@ import express from 'express';
 
 import {
     createIncrementSuccess,
+    createInvalidActionFormatError,
     createMissingBodyElementError,
     createPotholeCreationSuccess,
     createSupabaseError,
+    createUnsupportedActionError,
     notImplementedResponse,
 } from './responses';
 import { supabase } from './supabase';
@@ -27,7 +29,23 @@ interface ReportBody {
 // Endpoint for reporting a pothole
 // Critically, this may or may not create a new Pothole resource
 // hence it being not very RESTful in its name
-app.post('/potholes/report', async (req, res) => {
+app.post('/potholes:action', async (req, res) => {
+    const action = req.params.action;
+    if (action !== ':report') {
+        if (action[0] !== ':') {
+            const { status, body } = createInvalidActionFormatError();
+            res.status(status);
+            res.send(body);
+        }
+
+        const { status, body } = createUnsupportedActionError(
+            action.replace(':', '')
+        );
+        res.status(status);
+        res.send(body);
+        return;
+    }
+
     const reqBody: ReportBody = req.body;
 
     const { longitude: rawLongitude, latitude: rawLatitude } = reqBody;

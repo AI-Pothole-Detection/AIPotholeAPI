@@ -1,10 +1,11 @@
 /**
  * Putting all the response codes here because I am a lazy bastard.
  *
- * code 0 : Not implemented
- * code 1 : Missing parameter
+ * code 0 : Not implemented error
+ * code 1 : Missing parameter error
  * code 2 : Successfully created new pothole from report
  * code 3 : Successfully incremented pothole report count from report
+ * code 4 : Given action is unsupported error
  */
 
 interface ResponseInfo {
@@ -28,6 +29,33 @@ interface SuccessResponseBody {
         code: number;
         message: string;
         data?: any;
+    };
+}
+
+export function createInvalidActionFormatError(): ResponseInfo {
+    return {
+        status: 422,
+        body: {
+            type: 'error',
+            error: {
+                code: 5,
+                message:
+                    "Invalid action format. Actions must follow the format '.../...:<action>'.",
+            },
+        },
+    };
+}
+
+export function createUnsupportedActionError(action: string): ResponseInfo {
+    return {
+        status: 404,
+        body: {
+            type: 'error',
+            error: {
+                code: 4,
+                message: `Unsupported action '${action}'.`,
+            },
+        },
     };
 }
 
