@@ -50,6 +50,8 @@ app.post('/potholes:action', async (req, res) => {
 
     const { longitude: rawLongitude, latitude: rawLatitude } = reqBody;
 
+    console.log(`LONG ${rawLongitude} | LAT ${rawLatitude}`)
+
     // Now we gotta manually verify the types like goddamn cave men
     const longitude = Number(rawLongitude);
     const latitude = Number(rawLatitude);
