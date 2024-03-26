@@ -7,10 +7,9 @@ import {
     createPotholeCreationSuccess,
     createSupabaseError,
     createUnsupportedActionError,
-    notImplementedResponse,
 } from './responses';
-import { supabase } from './supabase';
 import { CLOSENESS_THRESHOLD_METERS } from './constants';
+import { createNewPothole, getClosestPothole, incrementPothole } from './rpcs';
 
 const app = express();
 const port = 3000;
@@ -113,48 +112,7 @@ app.post('/potholes:action', async (req, res) => {
     return;
 });
 
-async function createNewPothole(
-    long: number,
-    lat: number
-): Promise<number | null> {
-    const { data, error } = await supabase
-        .from('potholes')
-        .insert({ location: `POINT(${long} ${lat})` })
-        .select('id');
 
-    if (error) {
-        return null;
-    }
-
-    return data[0].id;
-}
-
-async function incrementPothole(id: number): Promise<void | null> {
-    const { data, error } = await supabase.rpc('increment', {
-        id_to_increment: id,
-    });
-
-    if (error) {
-        return null;
-    }
-}
-
-async function getClosestPothole(lat: number, long: number) {
-    const { data, error } = await supabase.rpc('nearby_potholes', {
-        lat,
-        long,
-    });
-
-    if (error) {
-        return undefined;
-    }
-
-    const { id, dist_meters } = data[0];
-    return {
-        id,
-        distance: dist_meters,
-    };
-}
 
 app.listen(port, () => {
     console.log(`AI Pothole API listening on port ${port}`);
