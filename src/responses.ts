@@ -7,8 +7,14 @@
  * code 3 : Successfully incremented pothole report count from report
  * code 4 : Given action is unsupported error
  * code 5 : Successfully said if an alert should appear
+ * code 6 : Successfully retreived potholes
  */
 
+import type { Pothole } from './internal.types';
+
+/**
+ * ResponseInfo
+ */
 interface ResponseInfo {
     status: number;
     body: ResponseBody;
@@ -33,6 +39,20 @@ interface SuccessResponseBody {
     };
 }
 
+export function createPotholeGetSuccess(potholes: Pothole[]): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'success',
+            data: {
+                code: 6,
+                message: 'Successfully retrieved potholes.',
+                result: potholes,
+            },
+        },
+    };
+}
+
 export function createInvalidActionFormatError(): ResponseInfo {
     return {
         status: 422,
@@ -46,7 +66,6 @@ export function createInvalidActionFormatError(): ResponseInfo {
         },
     };
 }
-
 
 export function createUnsupportedActionError(action: string): ResponseInfo {
     return {
@@ -81,10 +100,10 @@ export function createAlertSuccess(alert: boolean): ResponseInfo {
             type: 'success',
             data: {
                 code: 5,
-                message: "Successfully checked for nearby potholes.",
+                message: 'Successfully checked for nearby potholes.',
                 result: {
-                    alert
-                }
+                    alert,
+                },
             },
         },
     };

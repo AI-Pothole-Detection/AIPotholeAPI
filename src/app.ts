@@ -6,6 +6,7 @@ import {
     createInvalidActionFormatError,
     createMissingBodyElementError,
     createPotholeCreationSuccess,
+    createPotholeGetSuccess,
     createSupabaseError,
     createUnsupportedActionError,
 } from './responses';
@@ -126,6 +127,7 @@ app.get('/potholes', async (req, res) => {
     // its 3am i'm too tired
     const { minLat, minLong, maxLat, maxLong } = req.query;
 
+    // TODO: handle errors
     const { data, error } = await supabase.rpc('potholes_in_view', {
         min_lat: Number(minLat),
         min_long: Number(minLong),
@@ -133,7 +135,9 @@ app.get('/potholes', async (req, res) => {
         max_long: Number(maxLong),
     });
 
-    res.send(data);
+    const { status, body } = createPotholeGetSuccess(data || []);
+    res.status(status);
+    res.send(body);
     return;
 });
 
