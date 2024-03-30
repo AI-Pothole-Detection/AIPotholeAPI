@@ -8,6 +8,7 @@
  * code 4 : Given action is unsupported error
  * code 5 : Successfully said if an alert should appear
  * code 6 : Successfully retreived potholes
+ * code 7 : Invalid query parameters error
  */
 
 import type { Pothole } from './internal.types';
@@ -48,6 +49,19 @@ export function createPotholeGetSuccess(potholes: Pothole[]): ResponseInfo {
                 code: 6,
                 message: 'Successfully retrieved potholes.',
                 result: potholes,
+            },
+        },
+    };
+}
+
+export function createInvalidQueryParametersError(): ResponseInfo {
+    return {
+        status: 400,
+        body: {
+            type: 'error',
+            error: {
+                code: 7,
+                message: 'Could not parse query parameters.',
             },
         },
     };

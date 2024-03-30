@@ -4,6 +4,7 @@ import {
     createAlertSuccess,
     createIncrementSuccess,
     createInvalidActionFormatError,
+    createInvalidQueryParametersError,
     createMissingBodyElementError,
     createPotholeCreationSuccess,
     createPotholeGetSuccess,
@@ -123,17 +124,45 @@ app.post('/potholes:action', async (req, res) => {
 });
 
 app.get('/potholes', async (req, res) => {
-    // TODO: manually verify types
-    // its 3am i'm too tired
-    const { minLat, minLong, maxLat, maxLong } = req.query;
+    const {
+        minLat: rawMinLat,
+        minLong: rawMinLong,
+        maxLat: rawMaxLat,
+        maxLong: rawMaxLong,
+    } = req.query;
 
-    // TODO: handle errors
+    // Verifying type as number for each
+    // using snake_case since the RPC uses it
+    const minLat = Number(rawMinLat);
+    const minLong = Number(rawMinLong);
+    const maxLat = Number(rawMaxLat);
+    const maxLong = Number(rawMaxLong);
+
+    if (
+        Number.isNaN(minLat) ||
+        Number.isNaN(minLong) ||
+        Number.isNaN(maxLat) ||
+        Number.isNaN(maxLong)
+    ) {
+        const { status, body } = createInvalidQueryParametersError();
+        res.status(status);
+        res.send(body);
+        return;
+    }
+
     const { data, error } = await supabase.rpc('potholes_in_view', {
         min_lat: Number(minLat),
         min_long: Number(minLong),
         max_lat: Number(maxLat),
         max_long: Number(maxLong),
     });
+
+    if (error) {
+        const { status, body } = createSupabaseError();
+        res.status(status);
+        res.send(body);
+        return;
+    }
 
     const { status, body } = createPotholeGetSuccess(data || []);
     res.status(status);
