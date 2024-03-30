@@ -12,6 +12,7 @@ import {
 import { CLOSENESS_THRESHOLD_METERS } from './constants';
 import { createNewPothole, getClosestPothole, incrementPothole } from './rpcs';
 import { shouldAlert } from './advanced-alerting';
+import { supabase } from './supabase';
 
 const app = express();
 const port = 3000;
@@ -51,7 +52,6 @@ app.post('/potholes:action', async (req, res) => {
 
     const { longitude: rawLongitude, latitude: rawLatitude } = reqBody;
 
-
     // Now we gotta manually verify the types like goddamn cave men
     const longitude = Number(rawLongitude);
     const latitude = Number(rawLatitude);
@@ -71,12 +71,12 @@ app.post('/potholes:action', async (req, res) => {
     }
 
     if (action === ':alert') {
-        const alert = await shouldAlert(longitude, latitude)
+        const alert = await shouldAlert(longitude, latitude);
         const { status, body } = createAlertSuccess(alert);
         res.status(status);
         res.send(body);
         return;
-    } 
+    }
 
     const closest = await getClosestPothole(latitude, longitude);
 
@@ -118,6 +118,22 @@ app.post('/potholes:action', async (req, res) => {
     const { status, body } = createPotholeCreationSuccess(potholeId);
     res.status(status);
     res.send(body);
+    return;
+});
+
+app.get('/potholes', async (req, res) => {
+    // TODO: manually verify types
+    // its 3am i'm too tired
+    const { minLat, minLong, maxLat, maxLong } = req.query;
+
+    const { data, error } = await supabase.rpc('potholes_in_view', {
+        min_lat: Number(minLat),
+        min_long: Number(minLong),
+        max_lat: Number(maxLat),
+        max_long: Number(maxLong),
+    });
+
+    res.send(data);
     return;
 });
 
