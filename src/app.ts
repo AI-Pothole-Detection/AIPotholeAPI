@@ -1,5 +1,7 @@
 import express from 'express';
 
+import cors from 'cors';
+
 import {
     createAlertSuccess,
     createIncrementSuccess,
@@ -20,7 +22,7 @@ const app = express();
 const port = 3000;
 
 // This a JSON API fr fr no cap on a stack
-app.use(express.json());
+app.use(express.json(), cors());
 
 interface ReportBody {
     // i love typescript, but having absolutely 0 type safety when
