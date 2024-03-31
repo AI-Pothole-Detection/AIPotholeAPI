@@ -32,7 +32,7 @@ interface ReportBody {
     latitude: any;
 }
 
-// Endpoint for reporting a pothole
+// Endpoint for reporting/alerting to a pothole
 // Critically, this may or may not create a new Pothole resource
 // hence it being not very RESTful in its name
 app.post('/potholes:action', async (req, res) => {
@@ -94,7 +94,7 @@ app.post('/potholes:action', async (req, res) => {
     // Now that we have our closest pothole, we check if it is within 150 meters
     // If it is, we will simply increment the number of reports on that location,
     // and then end the request
-    if (closest.distance <= CLOSENESS_THRESHOLD_METERS) {
+    if (closest !== null && closest.distance <= CLOSENESS_THRESHOLD_METERS) {
         const incrementResult = await incrementPothole(closest.id);
         if (incrementResult === null) {
             const { status, body } = createSupabaseError();

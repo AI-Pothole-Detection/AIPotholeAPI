@@ -1,12 +1,15 @@
-import { supabase } from "./supabase";
+import { getLocation } from './google-api';
+import { supabase } from './supabase';
 
 export async function createNewPothole(
     long: number,
     lat: number
 ): Promise<number | null> {
+    const { street, city, county } = await getLocation(lat, long);
+
     const { data, error } = await supabase
         .from('potholes')
-        .insert({ location: `POINT(${long} ${lat})` })
+        .insert({ location: `POINT(${long} ${lat})`, street, city, county })
         .select('id');
 
     if (error) {
@@ -34,6 +37,10 @@ export async function getClosestPothole(lat: number, long: number) {
 
     if (error) {
         return undefined;
+    }
+
+    if (data.length === 0) {
+        return null;
     }
 
     const { id, dist_meters } = data[0];
