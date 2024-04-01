@@ -9,6 +9,7 @@
  * code 5 : Successfully said if an alert should appear
  * code 6 : Successfully retreived potholes
  * code 7 : Invalid query parameters error
+ * code 8 : Could not delete specified resource
  */
 
 import type { Pothole } from './internal.types';
@@ -49,6 +50,32 @@ export function createPotholeGetSuccess(potholes: Pothole[]): ResponseInfo {
                 code: 6,
                 message: 'Successfully retrieved potholes.',
                 result: potholes,
+            },
+        },
+    };
+}
+
+export function createResourceDeletionError(): ResponseInfo {
+    return {
+        status: 405,
+        body: {
+            type: 'error',
+            error: {
+                code: 7,
+                message: 'The requested resource could not be deleted.',
+            },
+        },
+    };
+}
+
+export function createResourceDeletionSuccess(): ResponseInfo {
+    return {
+        status: 405,
+        body: {
+            type: 'success',
+            data: {
+                code: 8,
+                message: 'The specified resource was successfully deleted.',
             },
         },
     };

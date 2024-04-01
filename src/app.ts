@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { raw } from 'express';
 
 import cors from 'cors';
 
@@ -10,6 +10,8 @@ import {
     createMissingBodyElementError,
     createPotholeCreationSuccess,
     createPotholeGetSuccess,
+    createResourceDeletionError,
+    createResourceDeletionSuccess,
     createSupabaseError,
     createUnsupportedActionError,
 } from './responses';
@@ -122,6 +124,33 @@ app.post('/potholes:action', async (req, res) => {
     const { status, body } = createPotholeCreationSuccess(potholeId);
     res.status(status);
     res.send(body);
+    return;
+});
+
+app.delete('/potholes', async (req, res) => {
+    const { id: rawId } = req.query;
+    const id = Number(rawId);
+
+    if (Number.isNaN(id)) {
+        const { status, body } = createInvalidQueryParametersError();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { data, error: existenceError } = await supabase
+        .from('potholes')
+        .select('id')
+        .eq('id', id);
+    const { error } = await supabase.from('potholes').delete().eq('id', id);
+
+    if (error || existenceError || data.length === 0) {
+        const { status, body } = createResourceDeletionError();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { status, body } = createResourceDeletionSuccess();
+    res.status(status).send(body);
     return;
 });
 
