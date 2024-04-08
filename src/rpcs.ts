@@ -1,15 +1,12 @@
-import { getLocation } from './google-api';
 import { supabase } from './supabase';
 
 export async function createNewPothole(
     long: number,
     lat: number
 ): Promise<number | null> {
-    const { street, city, county } = await getLocation(lat, long);
-
     const { data, error } = await supabase
         .from('potholes')
-        .insert({ location: `POINT(${long} ${lat})`, street, city, county })
+        .insert({ location: `POINT(${long} ${lat})` })
         .select('id');
 
     if (error) {
