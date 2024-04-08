@@ -10,6 +10,7 @@
  * code 6 : Successfully retreived potholes
  * code 7 : Invalid query parameters error
  * code 8 : Could not delete specified resource
+ * code 9 : Invalid JSON Body element
  */
 
 import type { Pothole } from './internal.types';
@@ -38,6 +39,21 @@ interface SuccessResponseBody {
         code: number;
         message: string;
         result?: any;
+    };
+}
+
+export function createInvalidJSONBodyElement(
+    invalidElement: string
+): ResponseInfo {
+    return {
+        status: 400,
+        body: {
+            type: 'error',
+            error: {
+                code: 9,
+                message: `Invalid JSON element '${invalidElement}' in request body`,
+            },
+        },
     };
 }
 
@@ -108,14 +124,14 @@ export function createInvalidActionFormatError(): ResponseInfo {
     };
 }
 
-export function createUnsupportedActionError(action: string): ResponseInfo {
+export function createUnsupportedActionError(): ResponseInfo {
     return {
         status: 404,
         body: {
             type: 'error',
             error: {
                 code: 4,
-                message: `Unsupported action '${action}'.`,
+                message: `Unsupported action. Supported actions are ':report' and ':alert'.`,
             },
         },
     };
