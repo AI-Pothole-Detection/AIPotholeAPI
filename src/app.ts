@@ -23,7 +23,8 @@ const app = express();
 const port = 3000;
 
 // This a JSON API fr fr no cap on a stack
-app.use(express.json(), cors());
+app.use(express.json({ limit: '500mb' }));
+app.use(cors());
 
 interface ActionBody {
     // i love typescript, but having absolutely 0 type safety when
