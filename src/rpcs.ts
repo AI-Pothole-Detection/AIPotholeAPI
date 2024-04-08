@@ -1,21 +1,5 @@
 import { supabase } from './supabase';
 
-export async function createNewPothole(
-    long: number,
-    lat: number
-): Promise<number | null> {
-    const { data, error } = await supabase
-        .from('potholes')
-        .insert({ location: `POINT(${long} ${lat})` })
-        .select('id');
-
-    if (error) {
-        return null;
-    }
-
-    return data[0].id;
-}
-
 export async function incrementPothole(id: number): Promise<void | null> {
     const { data, error } = await supabase.rpc('increment', {
         id_to_increment: id,

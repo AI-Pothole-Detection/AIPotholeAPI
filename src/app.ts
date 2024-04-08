@@ -16,9 +16,10 @@ import {
     createUnsupportedActionError,
 } from './responses';
 import { CLOSENESS_THRESHOLD_METERS } from './constants';
-import { createNewPothole, getClosestPothole, incrementPothole } from './rpcs';
+import { getClosestPothole, incrementPothole } from './rpcs';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
+import { createNewPothole } from './resource-operations';
 
 const app = express();
 const port = 3000;
