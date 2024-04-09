@@ -10,13 +10,15 @@
  * code 6 : Successfully retreived potholes
  * code 7 : Invalid query parameters error
  * code 8 : Could not delete specified resource
+ * code 9 : Invalid JSON Body element
+ * code 10 : Invalid id parameter
+ * code 11 : Invalid Base64 encoding
+ * code 12 : Image resource could not be created
+ * code 13 : Image resource was successfully created
  */
 
 import type { Pothole } from './internal.types';
 
-/**
- * ResponseInfo
- */
 interface ResponseInfo {
     status: number;
     body: ResponseBody;
@@ -38,6 +40,73 @@ interface SuccessResponseBody {
         code: number;
         message: string;
         result?: any;
+    };
+}
+
+export function createImageSuccess(id: number): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'success',
+            data: {
+                code: 13,
+                message: `The image was successfully created with id ${id}`,
+            },
+        },
+    };
+}
+
+export function createFailedImageCreationError(): ResponseInfo {
+    return {
+        status: 500,
+        body: {
+            type: 'error',
+            error: {
+                code: 12,
+                message: 'The image resource could not be created.',
+            },
+        },
+    };
+}
+
+export function createInvalidBase64Error(): ResponseInfo {
+    return {
+        status: 400,
+        body: {
+            type: 'error',
+            error: {
+                code: 11,
+                message: 'Invalid base64 image encoding.',
+            },
+        },
+    };
+}
+
+export function createInvalidIDParameter(): ResponseInfo {
+    return {
+        status: 400,
+        body: {
+            type: 'error',
+            error: {
+                code: 10,
+                message: "Invalid parameter 'id'.",
+            },
+        },
+    };
+}
+
+export function createInvalidJSONBodyElement(
+    invalidElement: string
+): ResponseInfo {
+    return {
+        status: 400,
+        body: {
+            type: 'error',
+            error: {
+                code: 9,
+                message: `Invalid JSON element '${invalidElement}' in request body`,
+            },
+        },
     };
 }
 
@@ -108,14 +177,14 @@ export function createInvalidActionFormatError(): ResponseInfo {
     };
 }
 
-export function createUnsupportedActionError(action: string): ResponseInfo {
+export function createUnsupportedActionError(): ResponseInfo {
     return {
         status: 404,
         body: {
             type: 'error',
             error: {
                 code: 4,
-                message: `Unsupported action '${action}'.`,
+                message: `Unsupported action. Supported actions are ':report' and ':alert'.`,
             },
         },
     };

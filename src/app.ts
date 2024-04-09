@@ -1,13 +1,16 @@
-import express, { raw } from 'express';
+import express from 'express';
 
 import cors from 'cors';
 
 import {
     createAlertSuccess,
+    createFailedImageCreationError,
+    createImageSuccess,
     createIncrementSuccess,
-    createInvalidActionFormatError,
+    createInvalidBase64Error,
+    createInvalidIDParameter,
+    createInvalidJSONBodyElement,
     createInvalidQueryParametersError,
-    createMissingBodyElementError,
     createPotholeCreationSuccess,
     createPotholeGetSuccess,
     createResourceDeletionError,
@@ -15,18 +18,23 @@ import {
     createSupabaseError,
     createUnsupportedActionError,
 } from './responses';
-import { CLOSENESS_THRESHOLD_METERS } from './constants';
-import { createNewPothole, getClosestPothole, incrementPothole } from './rpcs';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
+import { deduceAction, verifyBase64, verifyLatLong } from './request-handling';
+import { reportPothole } from './pothole-reporting';
+import {
+    createNewImageResource,
+    getImageResource,
+} from './resource-operations';
 
 const app = express();
 const port = 3000;
 
 // This a JSON API fr fr no cap on a stack
-app.use(express.json(), cors());
+app.use(express.json({ limit: '500mb' }));
+app.use(cors());
 
-interface ReportBody {
+interface ActionBody {
     // i love typescript, but having absolutely 0 type safety when
     // interacting with over-the-wire JSON input is really,
     // really really annoying. Rust rewrite when ?? 🦀👀
@@ -34,97 +42,65 @@ interface ReportBody {
     latitude: any;
 }
 
-// Endpoint for reporting/alerting to a pothole
-// Critically, this may or may not create a new Pothole resource
-// hence it being not very RESTful in its name
+// Endpoint for our weirder endpoints.
+// Naming is based of API Design Patterns, it's there
+// to signify that these are not normal RESTful endpoints,
+// but have side effects.
+//
+// Supported actions right now are `:report` and `:alert`
 app.post('/potholes:action', async (req, res) => {
-    const action = req.params.action;
-    if (action !== ':report' && action !== ':alert') {
-        if (action[0] !== ':') {
-            const { status, body } = createInvalidActionFormatError();
-            res.status(status);
-            res.send(body);
-        }
+    const { latitude: unverifiedLat, longitude: unverifiedLong } = req.body;
 
-        const { status, body } = createUnsupportedActionError(
-            action.replace(':', '')
-        );
-        res.status(status);
-        res.send(body);
+    const { lat, long } = verifyLatLong(unverifiedLat, unverifiedLong);
+
+    if (lat === null) {
+        const { status, body } = createInvalidJSONBodyElement('latitude');
+        res.status(status).send(body);
         return;
     }
 
-    const reqBody: ReportBody = req.body;
-
-    const { longitude: rawLongitude, latitude: rawLatitude } = reqBody;
-
-    // Now we gotta manually verify the types like goddamn cave men
-    const longitude = Number(rawLongitude);
-    const latitude = Number(rawLatitude);
-
-    if (Number.isNaN(longitude)) {
-        const { status, body } = createMissingBodyElementError('longitude');
-        res.status(status);
-        res.send(body);
+    if (long === null) {
+        const { status, body } = createInvalidJSONBodyElement('longitude');
+        res.status(status).send(body);
         return;
     }
 
-    if (Number.isNaN(latitude)) {
-        const { status, body } = createMissingBodyElementError('latitude');
-        res.status(status);
-        res.send(body);
+    const rawAction = req.params.action;
+    const action = deduceAction(rawAction);
+
+    if (action === undefined) {
+        const { status, body } = createUnsupportedActionError();
+        res.status(status).send(body);
         return;
     }
 
-    if (action === ':alert') {
-        const alert = await shouldAlert(longitude, latitude);
-        const { status, body } = createAlertSuccess(alert);
-        res.status(status);
-        res.send(body);
+    if (action === 'alert') {
+        const alert = await shouldAlert(lat, long);
+        const { body, status } = createAlertSuccess(alert);
+        res.status(status).send(body);
         return;
     }
 
-    const closest = await getClosestPothole(latitude, longitude);
-
-    if (closest === undefined) {
-        const { status, body } = createSupabaseError();
-        res.status(status);
-        res.send(body);
-        return;
-    }
-
-    // Now that we have our closest pothole, we check if it is within 150 meters
-    // If it is, we will simply increment the number of reports on that location,
-    // and then end the request
-    if (closest !== null && closest.distance <= CLOSENESS_THRESHOLD_METERS) {
-        const incrementResult = await incrementPothole(closest.id);
-        if (incrementResult === null) {
-            const { status, body } = createSupabaseError();
-            res.status(status);
-            res.send(body);
+    const reportOutcome = await reportPothole(lat, long);
+    switch (reportOutcome.outcome) {
+        case 'creation': {
+            const { status, body } = createPotholeCreationSuccess(
+                reportOutcome.id
+            );
+            res.status(status).send(body);
             return;
         }
-        const { status, body } = createIncrementSuccess(closest.id);
-        res.status(status);
-        res.send(body);
-        return;
+        case 'increment': {
+            const { status, body } = createIncrementSuccess(reportOutcome.id);
+            res.status(status).send(body);
+            return;
+        }
+        case 'error': {
+            const { status, body } = createSupabaseError();
+            res.status(status).send(body);
+            return;
+        }
     }
-
-    // If we made it here, we need to go ahead and create a new pothole resource
-    // since one within the threshold does not exist
-    const potholeId = await createNewPothole(longitude, latitude);
-
-    if (potholeId === null) {
-        const { status, body } = createSupabaseError();
-        res.status(status);
-        res.send(body);
-        return;
-    }
-
-    const { status, body } = createPotholeCreationSuccess(potholeId);
-    res.status(status);
-    res.send(body);
-    return;
 });
 
 app.delete('/potholes', async (req, res) => {
@@ -198,6 +174,113 @@ app.get('/potholes', async (req, res) => {
     const { status, body } = createPotholeGetSuccess(data || []);
     res.status(status);
     res.send(body);
+    return;
+});
+
+app.post('/images', async (req, res) => {
+    console.log('HELLO!');
+    const potholeId = Number(req.query.pothole);
+
+    if (Number.isNaN(potholeId)) {
+        // TODO: should be invalid query
+        const { status, body } = createInvalidIDParameter();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { encoding: rawEncoding } = req.body;
+    const encoding = verifyBase64(rawEncoding);
+
+    if (encoding === null) {
+        const { status, body } = createInvalidBase64Error();
+        res.status(status).send(body);
+        return;
+    }
+
+    const result = await createNewImageResource(potholeId, encoding);
+    switch (result.outcome) {
+        case 'creation error': {
+            const { status, body } = createFailedImageCreationError();
+            res.status(status).send(body);
+            return;
+        }
+        case 'upload error': {
+            const { status, body } = createFailedImageCreationError();
+            res.status(status).send(body);
+            return;
+        }
+        case 'creation success': {
+            const { status, body } = createImageSuccess(result.id);
+            res.status(status).send(body);
+            return;
+        }
+    }
+});
+
+app.get(`/images/:id`, async (req, res) => {
+    //
+    // This endpoint is for retreiving a image resource
+    // via the id of the image resource itself.
+    //
+    // This is the sister endpoint of /images,
+    // which supports retreiving all images by
+    // associated pothole id
+    //
+
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+        res.status(400).send('error with the id param');
+        return;
+    }
+
+    const imageUrl = getImageResource(id);
+    res.status(200).send(imageUrl);
+    return;
+});
+
+app.get(`/images`, async (req, res) => {
+    //
+    // We want this endpoint to handle searching for images
+    // via pothole id
+    //
+    // This is the more useful of image endpoints,
+    // since searching by image id requires knowing the image id
+    // beforehand
+    //
+
+    const { potholeId } = req.query;
+
+    if (potholeId === undefined) {
+        return;
+    }
+
+    const { data, error } = await supabase
+        .from('images')
+        .select('id,createdAt:created_at')
+        .eq('pothole_id', potholeId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        res.status(500).send('supabase error');
+        return;
+    }
+
+    interface Image {
+        id: number;
+        createdAt: string;
+        url: string;
+    }
+
+    let images = [];
+    for (const element of data) {
+        images.push({
+            ...element,
+            url: getImageResource(element.id),
+        });
+    }
+
+    res.send(images);
     return;
 });
 
