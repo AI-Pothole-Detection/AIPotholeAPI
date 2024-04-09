@@ -22,7 +22,10 @@ import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
 import { deduceAction, verifyBase64, verifyLatLong } from './request-handling';
 import { reportPothole } from './pothole-reporting';
-import { createNewImageResource } from './resource-operations';
+import {
+    createNewImageResource,
+    getImageResource,
+} from './resource-operations';
 
 const app = express();
 const port = 3000;
@@ -174,10 +177,12 @@ app.get('/potholes', async (req, res) => {
     return;
 });
 
-app.post('/images/:id', async (req, res) => {
-    const id = Number(req.params.id);
+app.post('/images', async (req, res) => {
+    console.log('HELLO!');
+    const potholeId = Number(req.query.pothole);
 
-    if (Number.isNaN(id)) {
+    if (Number.isNaN(potholeId)) {
+        // TODO: should be invalid query
         const { status, body } = createInvalidIDParameter();
         res.status(status).send(body);
         return;
@@ -192,7 +197,7 @@ app.post('/images/:id', async (req, res) => {
         return;
     }
 
-    const result = await createNewImageResource(id, encoding);
+    const result = await createNewImageResource(potholeId, encoding);
     switch (result.outcome) {
         case 'creation error': {
             const { status, body } = createFailedImageCreationError();
@@ -210,6 +215,73 @@ app.post('/images/:id', async (req, res) => {
             return;
         }
     }
+});
+
+app.get(`/images/:id`, async (req, res) => {
+    //
+    // This endpoint is for retreiving a image resource
+    // via the id of the image resource itself.
+    //
+    // This is the sister endpoint of /images,
+    // which supports retreiving all images by
+    // associated pothole id
+    //
+
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+        res.status(400).send('error with the id param');
+        return;
+    }
+
+    const imageUrl = getImageResource(id);
+    res.status(200).send(imageUrl);
+    return;
+});
+
+app.get(`/images`, async (req, res) => {
+    //
+    // We want this endpoint to handle searching for images
+    // via pothole id
+    //
+    // This is the more useful of image endpoints,
+    // since searching by image id requires knowing the image id
+    // beforehand
+    //
+
+    const { potholeId } = req.query;
+
+    if (potholeId === undefined) {
+        return;
+    }
+
+    const { data, error } = await supabase
+        .from('images')
+        .select('id,createdAt:created_at')
+        .eq('pothole_id', potholeId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        res.status(500).send('supabase error');
+        return;
+    }
+
+    interface Image {
+        id: number;
+        createdAt: string;
+        url: string;
+    }
+
+    let images = [];
+    for (const element of data) {
+        images.push({
+            ...element,
+            url: getImageResource(element.id),
+        });
+    }
+
+    res.send(images);
+    return;
 });
 
 app.listen(port, () => {

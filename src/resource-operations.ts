@@ -76,6 +76,13 @@ export async function createNewImageResource(
     };
 }
 
+export function getImageResource(id: number) {
+    const {
+        data: { publicUrl },
+    } = supabase.storage.from('images').getPublicUrl(`${id}.png`);
+    return publicUrl;
+}
+
 async function uploadImage(id: number, encoding: string) {
     const { data, error } = await supabase.storage
         .from('images')
