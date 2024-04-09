@@ -4,7 +4,11 @@ import cors from 'cors';
 
 import {
     createAlertSuccess,
+    createFailedImageCreationError,
+    createImageSuccess,
     createIncrementSuccess,
+    createInvalidBase64Error,
+    createInvalidIDParameter,
     createInvalidJSONBodyElement,
     createInvalidQueryParametersError,
     createPotholeCreationSuccess,
@@ -16,8 +20,9 @@ import {
 } from './responses';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
-import { deduceAction, verifyLatLong } from './request-handling';
+import { deduceAction, verifyBase64, verifyLatLong } from './request-handling';
 import { reportPothole } from './pothole-reporting';
+import { createNewImageResource } from './resource-operations';
 
 const app = express();
 const port = 3000;
@@ -167,6 +172,44 @@ app.get('/potholes', async (req, res) => {
     res.status(status);
     res.send(body);
     return;
+});
+
+app.post('/images/:id', async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+        const { status, body } = createInvalidIDParameter();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { encoding: rawEncoding } = req.body;
+    const encoding = verifyBase64(rawEncoding);
+
+    if (encoding === null) {
+        const { status, body } = createInvalidBase64Error();
+        res.status(status).send(body);
+        return;
+    }
+
+    const result = await createNewImageResource(id, encoding);
+    switch (result.outcome) {
+        case 'creation error': {
+            const { status, body } = createFailedImageCreationError();
+            res.status(status).send(body);
+            return;
+        }
+        case 'upload error': {
+            const { status, body } = createFailedImageCreationError();
+            res.status(status).send(body);
+            return;
+        }
+        case 'creation success': {
+            const { status, body } = createImageSuccess(result.id);
+            res.status(status).send(body);
+            return;
+        }
+    }
 });
 
 app.listen(port, () => {

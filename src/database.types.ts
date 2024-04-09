@@ -9,6 +9,35 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      images: {
+        Row: {
+          created_at: string
+          file_uuid: string
+          id: number
+          pothole_id: number
+        }
+        Insert: {
+          created_at?: string
+          file_uuid?: string
+          id?: number
+          pothole_id: number
+        }
+        Update: {
+          created_at?: string
+          file_uuid?: string
+          id?: number
+          pothole_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_pothole_images_pothole_id_fkey"
+            columns: ["pothole_id"]
+            isOneToOne: false
+            referencedRelation: "potholes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       potholes: {
         Row: {
           created_at: string

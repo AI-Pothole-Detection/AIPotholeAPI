@@ -10,6 +10,12 @@ export function verifyLatLong(lat: any, long: any): LatLongConversionResults {
     };
 }
 
+type Base64VerificationResults = string | null;
+
+export function verifyBase64(base64: string): Base64VerificationResults {
+    return isString(base64) ? base64 : null;
+}
+
 export function deduceAction(action: string) {
     if (action === ':alert') {
         return 'alert';
@@ -22,4 +28,8 @@ export function deduceAction(action: string) {
 
 function isNumber(v: any) {
     return typeof v === 'number';
+}
+
+function isString(v: any) {
+    return typeof v === 'string';
 }
