@@ -21,6 +21,7 @@ import {
     createErrorResourceRetrevial,
     createErrorResourceNonexistant,
     createSuccessRetrevial,
+    createSuccessResourcesRetrieved,
 } from './responses';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
@@ -31,6 +32,7 @@ import {
     getImageResourceById,
     getImageUrl,
 } from './resource-operations';
+import type { Image } from './internal.types';
 
 const app = express();
 const port = 3000;
@@ -269,12 +271,18 @@ app.get(`/images`, async (req, res) => {
     // beforehand
     //
 
-    const { potholeId } = req.query;
+    const potholeId = Number(req.query.pothole);
 
-    if (potholeId === undefined) {
+    // Really simple check that we aren't dealing with a NaN
+    // this is acting as validation
+    // TODO: more rigorous validation check?
+    if (Number.isNaN(potholeId)) {
+        const { status, body } = createErrorInvalidURLParameter('pothole');
+        res.status(status).send(body);
         return;
     }
 
+    // TODO: this should allllll be in a function tbh
     const { data, error } = await supabase
         .from('images')
         .select('id,createdAt:created_at')
@@ -282,25 +290,28 @@ app.get(`/images`, async (req, res) => {
         .order('created_at', { ascending: false });
 
     if (error) {
-        res.status(500).send('supabase error');
+        const { status, body } = createErrorResourceRetrevial();
+        res.status(status).send(body);
         return;
     }
 
-    interface Image {
-        id: number;
-        createdAt: string;
-        url: string;
+    if (data.length === 0) {
+        const { status, body } = createErrorResourceNonexistant();
+        res.status(status).send(body);
+        return;
     }
 
-    let images = [];
+    let images: Image[] = [];
     for (const element of data) {
         images.push({
             ...element,
+            potholeId,
             url: getImageUrl(element.id),
         });
     }
 
-    res.send(images);
+    const { status, body } = createSuccessResourcesRetrieved(images);
+    res.status(status).send(body);
     return;
 });
 

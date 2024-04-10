@@ -11,6 +11,8 @@
  *  5 - Resource could not be retrieved due to internal error
  *  6 - Resource does not exist
  *  7 - Resource was successfully retrieved
+ *
+ *  8 - Set of resources was successfully retrieved
  */
 
 import type { Image, Pothole } from './internal.types';
@@ -122,6 +124,19 @@ export function createSuccessRetrevial(data: any): ResponseInfo {
             type: 'Success',
             code: 7,
             message: 'The specified resource was successfully retrieved.',
+            data,
+        },
+    };
+}
+
+export function createSuccessResourcesRetrieved(data: any): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'Success',
+            code: 8,
+            message:
+                'One or more resources were found matching the given parameters.',
             data,
         },
     };
