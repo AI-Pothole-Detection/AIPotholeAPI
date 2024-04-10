@@ -17,12 +17,20 @@ import {
     createResourceDeletionSuccess,
     createSupabaseError,
     createUnsupportedActionError,
+    createErrorInvalidURLParameter,
+    createErrorResourceRetrevial,
+    createErrorResourceNonexistant,
+    createSuccessRetrevial,
 } from './responses';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
 import { deduceAction, verifyBase64, verifyLatLong } from './request-handling';
 import { reportPothole } from './pothole-reporting';
-import { createNewImageResource, getImageUrl } from './resource-operations';
+import {
+    createNewImageResource,
+    getImageResourceById,
+    getImageUrl,
+} from './resource-operations';
 
 const app = express();
 const port = 3000;
@@ -216,25 +224,39 @@ app.post('/images', async (req, res) => {
 });
 
 app.get(`/images/:id`, async (req, res) => {
-    //
-    // This endpoint is for retreiving a image resource
-    // via the id of the image resource itself.
-    //
-    // This is the sister endpoint of /images,
-    // which supports retreiving all images by
-    // associated pothole id
-    //
-
     const id = Number(req.params.id);
 
+    // Simple validation check here via simply checking for NaN on our conversion
+    // This is likely NOT a completely robust solution
+    // TODO: more rigorous URL parameter checking?
     if (Number.isNaN(id)) {
-        res.status(400).send('error with the id param');
+        const { status, body } = createErrorInvalidURLParameter('id');
+        res.status(status).send(body);
         return;
     }
 
-    const imageUrl = getImageUrl(id);
-    res.status(200).send(imageUrl);
-    return;
+    const image = await getImageResourceById(id);
+
+    switch (image) {
+        // Internal error case case
+        case undefined: {
+            const { status, body } = createErrorResourceRetrevial();
+            res.status(status).send(body);
+            return;
+        }
+        // Doesn't exist case
+        case null: {
+            const { status, body } = createErrorResourceNonexistant();
+            res.status(status).send(body);
+            return;
+        }
+        // Success case
+        default: {
+            const { status, body } = createSuccessRetrevial(image);
+            res.status(status).send(body);
+            return;
+        }
+    }
 });
 
 app.get(`/images`, async (req, res) => {

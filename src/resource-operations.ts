@@ -1,4 +1,5 @@
 import type { Image } from './internal.types';
+import { createPotholeCreationSuccess } from './responses';
 import { supabase } from './supabase';
 
 import { decode } from 'base64-arraybuffer';
@@ -44,6 +45,7 @@ interface CreationSuccess {
 
 type NewImageOutcome = CreationError | UploadError | CreationSuccess;
 
+// TODO: potentially rename? "new" is redundant when talking about creation
 export async function createNewImageResource(
     potholeId: number,
     encoding: string
@@ -87,6 +89,31 @@ export function getImageUrl(id: number) {
         data: { publicUrl },
     } = supabase.storage.from('images').getPublicUrl(`${id}.png`);
     return publicUrl;
+}
+
+export async function getImageResourceById(
+    id: number
+): Promise<Image | null | undefined> {
+    const { data, error } = await supabase
+        .from('images')
+        .select('id,createdAt:created_at,potholeId:pothole_id')
+        .eq('id', id);
+
+    if (error) {
+        return undefined;
+    }
+
+    if (data.length === 0) {
+        return null;
+    }
+
+    const { createdAt, potholeId } = data[0];
+    return {
+        id,
+        createdAt,
+        potholeId,
+        url: getImageUrl(id),
+    };
 }
 
 async function uploadImage(id: number, encoding: string) {

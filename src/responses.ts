@@ -4,7 +4,13 @@
  * CODES:
  *  1 - Resource creation success
  *  2 - Resource creation failure, our fault
+ *
  *  3 - Provided Base64 could not be parsed, user's fault
+ *  4 - Invalid URL Parameter
+ *
+ *  5 - Resource could not be retrieved due to internal error
+ *  6 - Resource does not exist
+ *  7 - Resource was successfully retrieved
  */
 
 import type { Image, Pothole } from './internal.types';
@@ -65,6 +71,54 @@ export function createErrorUnparsableBase64(): ResponseInfo {
             code: 3,
             message:
                 'The provided base64 could not be parsed. Please review base64 payload and try again.',
+        },
+    };
+}
+
+export function createErrorInvalidURLParameter(
+    parameter: string
+): ResponseInfo {
+    return {
+        status: 400,
+        body: {
+            type: 'Error',
+            code: 4,
+            message: `An invalid value was given for the '${parameter}' URL parameter. Please review the value and try again.`,
+        },
+    };
+}
+
+export function createErrorResourceRetrevial(): ResponseInfo {
+    return {
+        status: 500,
+        body: {
+            type: 'Error',
+            code: 5,
+            message:
+                'An internal error occurred while trying to retrieve the specified resource.',
+        },
+    };
+}
+
+export function createErrorResourceNonexistant(): ResponseInfo {
+    return {
+        status: 404,
+        body: {
+            type: 'Error',
+            code: 6,
+            message: 'The specified resource does not exist.',
+        },
+    };
+}
+
+export function createSuccessRetrevial(data: any): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'Success',
+            code: 7,
+            message: 'The specified resource was successfully retrieved.',
+            data,
         },
     };
 }
