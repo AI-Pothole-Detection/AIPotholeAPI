@@ -3,20 +3,21 @@ import express from 'express';
 import cors from 'cors';
 
 import {
-    createAlertSuccess,
-    createFailedImageCreationError,
-    createImageSuccess,
-    createIncrementSuccess,
-    createInvalidBase64Error,
-    createInvalidIDParameter,
-    createInvalidJSONBodyElement,
-    createInvalidQueryParametersError,
-    createPotholeCreationSuccess,
-    createPotholeGetSuccess,
-    createResourceDeletionError,
-    createResourceDeletionSuccess,
-    createSupabaseError,
-    createUnsupportedActionError,
+    createSuccessAlert,
+    createErrorResourceCreation,
+    createSuccessResourceCreated,
+    createErrorUnparsableBase64,
+    createErrorInvalidJSONElement,
+    createErrorUnsupportedAction,
+    createErrorInvalidURLParameter,
+    createErrorResourceRetrevial,
+    createErrorResourceNonexistant,
+    createSuccessRetrevial,
+    createSuccessResourcesRetrieved,
+    createErrorResourceDeletion,
+    createSuccessResourceDeletion,
+    createSuccessResourceModified,
+    createErrorResourceModification,
 } from './responses';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
@@ -24,43 +25,30 @@ import { deduceAction, verifyBase64, verifyLatLong } from './request-handling';
 import { reportPothole } from './pothole-reporting';
 import {
     createNewImageResource,
-    getImageResource,
+    getImageResourceById,
+    getImageUrl,
 } from './resource-operations';
+import type { Image } from './internal.types';
 
 const app = express();
 const port = 3000;
 
-// This a JSON API fr fr no cap on a stack
 app.use(express.json({ limit: '500mb' }));
 app.use(cors());
 
-interface ActionBody {
-    // i love typescript, but having absolutely 0 type safety when
-    // interacting with over-the-wire JSON input is really,
-    // really really annoying. Rust rewrite when ?? 🦀👀
-    longitude: any;
-    latitude: any;
-}
-
-// Endpoint for our weirder endpoints.
-// Naming is based of API Design Patterns, it's there
-// to signify that these are not normal RESTful endpoints,
-// but have side effects.
-//
-// Supported actions right now are `:report` and `:alert`
 app.post('/potholes:action', async (req, res) => {
     const { latitude: unverifiedLat, longitude: unverifiedLong } = req.body;
 
     const { lat, long } = verifyLatLong(unverifiedLat, unverifiedLong);
 
     if (lat === null) {
-        const { status, body } = createInvalidJSONBodyElement('latitude');
+        const { status, body } = createErrorInvalidJSONElement('latitude');
         res.status(status).send(body);
         return;
     }
 
     if (long === null) {
-        const { status, body } = createInvalidJSONBodyElement('longitude');
+        const { status, body } = createErrorInvalidJSONElement('longitude');
         res.status(status).send(body);
         return;
     }
@@ -69,14 +57,14 @@ app.post('/potholes:action', async (req, res) => {
     const action = deduceAction(rawAction);
 
     if (action === undefined) {
-        const { status, body } = createUnsupportedActionError();
+        const { status, body } = createErrorUnsupportedAction();
         res.status(status).send(body);
         return;
     }
 
     if (action === 'alert') {
         const alert = await shouldAlert(lat, long);
-        const { body, status } = createAlertSuccess(alert);
+        const { body, status } = createSuccessAlert(alert);
         res.status(status).send(body);
         return;
     }
@@ -84,19 +72,21 @@ app.post('/potholes:action', async (req, res) => {
     const reportOutcome = await reportPothole(lat, long);
     switch (reportOutcome.outcome) {
         case 'creation': {
-            const { status, body } = createPotholeCreationSuccess(
-                reportOutcome.id
+            const { status, body } = createSuccessResourceCreated(
+                reportOutcome.pothole
             );
             res.status(status).send(body);
             return;
         }
         case 'increment': {
-            const { status, body } = createIncrementSuccess(reportOutcome.id);
+            const { status, body } = createSuccessResourceModified(
+                reportOutcome.pothole
+            );
             res.status(status).send(body);
             return;
         }
         case 'error': {
-            const { status, body } = createSupabaseError();
+            const { status, body } = createErrorResourceModification();
             res.status(status).send(body);
             return;
         }
@@ -108,7 +98,7 @@ app.delete('/potholes', async (req, res) => {
     const id = Number(rawId);
 
     if (Number.isNaN(id)) {
-        const { status, body } = createInvalidQueryParametersError();
+        const { status, body } = createErrorInvalidURLParameter('id');
         res.status(status).send(body);
         return;
     }
@@ -117,15 +107,28 @@ app.delete('/potholes', async (req, res) => {
         .from('potholes')
         .select('id')
         .eq('id', id);
-    const { error } = await supabase.from('potholes').delete().eq('id', id);
 
-    if (error || existenceError || data.length === 0) {
-        const { status, body } = createResourceDeletionError();
+    if (existenceError) {
+        const { status, body } = createErrorResourceDeletion();
         res.status(status).send(body);
         return;
     }
 
-    const { status, body } = createResourceDeletionSuccess();
+    if (data.length === 0) {
+        const { status, body } = createErrorResourceNonexistant();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { error } = await supabase.from('potholes').delete().eq('id', id);
+
+    if (error) {
+        const { status, body } = createErrorResourceDeletion();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { status, body } = createSuccessResourceDeletion();
     res.status(status).send(body);
     return;
 });
@@ -145,45 +148,59 @@ app.get('/potholes', async (req, res) => {
     const maxLat = Number(rawMaxLat);
     const maxLong = Number(rawMaxLong);
 
-    if (
-        Number.isNaN(minLat) ||
-        Number.isNaN(minLong) ||
-        Number.isNaN(maxLat) ||
-        Number.isNaN(maxLong)
-    ) {
-        const { status, body } = createInvalidQueryParametersError();
-        res.status(status);
-        res.send(body);
+    if (Number.isNaN(minLat)) {
+        const { status, body } = createErrorInvalidURLParameter('minLat');
+        res.status(status).send(body);
+        return;
+    }
+    if (Number.isNaN(minLong)) {
+        const { status, body } = createErrorInvalidURLParameter('minLong');
+        res.status(status).send(body);
+        return;
+    }
+    if (Number.isNaN(maxLat)) {
+        const { status, body } = createErrorInvalidURLParameter('maxLat');
+        res.status(status).send(body);
+        return;
+    }
+    if (Number.isNaN(maxLong)) {
+        const { status, body } = createErrorInvalidURLParameter('maxLong');
+        res.status(status).send(body);
         return;
     }
 
     const { data, error } = await supabase.rpc('potholes_in_view', {
-        min_lat: Number(minLat),
-        min_long: Number(minLong),
-        max_lat: Number(maxLat),
-        max_long: Number(maxLong),
+        min_lat: minLat,
+        min_long: minLong,
+        max_lat: maxLat,
+        max_long: maxLong,
     });
 
     if (error) {
-        const { status, body } = createSupabaseError();
-        res.status(status);
-        res.send(body);
+        const { status, body } = createErrorResourceRetrevial();
+        res.status(status).send(body);
         return;
     }
 
-    const { status, body } = createPotholeGetSuccess(data || []);
-    res.status(status);
-    res.send(body);
+    if (data.length === 0) {
+        const { status, body } = createErrorResourceNonexistant();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { status, body } = createSuccessResourcesRetrieved(data);
+    res.status(status).send(body);
     return;
 });
 
 app.post('/images', async (req, res) => {
-    console.log('HELLO!');
     const potholeId = Number(req.query.pothole);
 
+    // Really simple check that we aren't dealing with a NaN
+    // this is acting as validation
+    // TODO: more rigorous validation check?
     if (Number.isNaN(potholeId)) {
-        // TODO: should be invalid query
-        const { status, body } = createInvalidIDParameter();
+        const { status, body } = createErrorInvalidURLParameter('potholeId');
         res.status(status).send(body);
         return;
     }
@@ -192,7 +209,7 @@ app.post('/images', async (req, res) => {
     const encoding = verifyBase64(rawEncoding);
 
     if (encoding === null) {
-        const { status, body } = createInvalidBase64Error();
+        const { status, body } = createErrorUnparsableBase64();
         res.status(status).send(body);
         return;
     }
@@ -200,17 +217,17 @@ app.post('/images', async (req, res) => {
     const result = await createNewImageResource(potholeId, encoding);
     switch (result.outcome) {
         case 'creation error': {
-            const { status, body } = createFailedImageCreationError();
+            const { status, body } = createErrorResourceCreation();
             res.status(status).send(body);
             return;
         }
         case 'upload error': {
-            const { status, body } = createFailedImageCreationError();
+            const { status, body } = createErrorResourceCreation();
             res.status(status).send(body);
             return;
         }
         case 'creation success': {
-            const { status, body } = createImageSuccess(result.id);
+            const { status, body } = createSuccessResourceCreated(result.image);
             res.status(status).send(body);
             return;
         }
@@ -218,25 +235,39 @@ app.post('/images', async (req, res) => {
 });
 
 app.get(`/images/:id`, async (req, res) => {
-    //
-    // This endpoint is for retreiving a image resource
-    // via the id of the image resource itself.
-    //
-    // This is the sister endpoint of /images,
-    // which supports retreiving all images by
-    // associated pothole id
-    //
-
     const id = Number(req.params.id);
 
+    // Simple validation check here via simply checking for NaN on our conversion
+    // This is likely NOT a completely robust solution
+    // TODO: more rigorous URL parameter checking?
     if (Number.isNaN(id)) {
-        res.status(400).send('error with the id param');
+        const { status, body } = createErrorInvalidURLParameter('id');
+        res.status(status).send(body);
         return;
     }
 
-    const imageUrl = getImageResource(id);
-    res.status(200).send(imageUrl);
-    return;
+    const image = await getImageResourceById(id);
+
+    switch (image) {
+        // Internal error case case
+        case undefined: {
+            const { status, body } = createErrorResourceRetrevial();
+            res.status(status).send(body);
+            return;
+        }
+        // Doesn't exist case
+        case null: {
+            const { status, body } = createErrorResourceNonexistant();
+            res.status(status).send(body);
+            return;
+        }
+        // Success case
+        default: {
+            const { status, body } = createSuccessRetrevial(image);
+            res.status(status).send(body);
+            return;
+        }
+    }
 });
 
 app.get(`/images`, async (req, res) => {
@@ -249,12 +280,18 @@ app.get(`/images`, async (req, res) => {
     // beforehand
     //
 
-    const { potholeId } = req.query;
+    const potholeId = Number(req.query.pothole);
 
-    if (potholeId === undefined) {
+    // Really simple check that we aren't dealing with a NaN
+    // this is acting as validation
+    // TODO: more rigorous validation check?
+    if (Number.isNaN(potholeId)) {
+        const { status, body } = createErrorInvalidURLParameter('pothole');
+        res.status(status).send(body);
         return;
     }
 
+    // TODO: this should allllll be in a function tbh
     const { data, error } = await supabase
         .from('images')
         .select('id,createdAt:created_at')
@@ -262,25 +299,28 @@ app.get(`/images`, async (req, res) => {
         .order('created_at', { ascending: false });
 
     if (error) {
-        res.status(500).send('supabase error');
+        const { status, body } = createErrorResourceRetrevial();
+        res.status(status).send(body);
         return;
     }
 
-    interface Image {
-        id: number;
-        createdAt: string;
-        url: string;
+    if (data.length === 0) {
+        const { status, body } = createErrorResourceNonexistant();
+        res.status(status).send(body);
+        return;
     }
 
-    let images = [];
+    let images: Image[] = [];
     for (const element of data) {
         images.push({
             ...element,
-            url: getImageResource(element.id),
+            potholeId,
+            url: getImageUrl(element.id),
         });
     }
 
-    res.send(images);
+    const { status, body } = createSuccessResourcesRetrieved(images);
+    res.status(status).send(body);
     return;
 });
 
