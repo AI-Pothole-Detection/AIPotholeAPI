@@ -50,16 +50,6 @@ export function createImageCreationSuccess(image: Image): ResponseInfo {
             data: image,
         },
     };
-    // return {
-    //     status: 200,
-    //     body: {
-    //         type: 'success',
-    //         data: {
-    //             code: 13,
-    //             message: `The image was successfully created with id ${id}`,
-    //         },
-    //     },
-    // };
 }
 
 export function createFailedImageCreationError(): ResponseInfo {
