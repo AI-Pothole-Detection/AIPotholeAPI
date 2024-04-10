@@ -194,7 +194,7 @@ app.get('/potholes', async (req, res) => {
 });
 
 app.post('/images', async (req, res) => {
-    const potholeId = Number(req.query.pothole);
+    const potholeId = Number(req.body.pothole);
 
     // Really simple check that we aren't dealing with a NaN
     // this is acting as validation
@@ -271,15 +271,6 @@ app.get(`/images/:id`, async (req, res) => {
 });
 
 app.get(`/images`, async (req, res) => {
-    //
-    // We want this endpoint to handle searching for images
-    // via pothole id
-    //
-    // This is the more useful of image endpoints,
-    // since searching by image id requires knowing the image id
-    // beforehand
-    //
-
     const potholeId = Number(req.query.pothole);
 
     // Really simple check that we aren't dealing with a NaN
