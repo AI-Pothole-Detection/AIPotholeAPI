@@ -56,6 +56,7 @@ export function createResourceCreationFailureInternal(): ResponseInfo {
     };
 }
 
+// DONE
 export function createErrorUnparsableBase64(): ResponseInfo {
     return {
         status: 400,
@@ -66,16 +67,6 @@ export function createErrorUnparsableBase64(): ResponseInfo {
                 'The provided base64 could not be parsed. Please review base64 payload and try again.',
         },
     };
-    // return {
-    //     status: 400,
-    //     body: {
-    //         type: 'error',
-    //         error: {
-    //             code: 3,
-    //             message: 'Invalid base64 image encoding.',
-    //         },
-    //     },
-    // };
 }
 
 export function createInvalidIDParameter(): ResponseInfo {
