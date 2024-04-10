@@ -152,35 +152,48 @@ app.get('/potholes', async (req, res) => {
     const maxLat = Number(rawMaxLat);
     const maxLong = Number(rawMaxLong);
 
-    if (
-        Number.isNaN(minLat) ||
-        Number.isNaN(minLong) ||
-        Number.isNaN(maxLat) ||
-        Number.isNaN(maxLong)
-    ) {
-        const { status, body } = createInvalidQueryParametersError();
-        res.status(status);
-        res.send(body);
+    if (Number.isNaN(minLat)) {
+        const { status, body } = createErrorInvalidURLParameter('minLat');
+        res.status(status).send(body);
+        return;
+    }
+    if (Number.isNaN(minLong)) {
+        const { status, body } = createErrorInvalidURLParameter('minLong');
+        res.status(status).send(body);
+        return;
+    }
+    if (Number.isNaN(maxLat)) {
+        const { status, body } = createErrorInvalidURLParameter('maxLat');
+        res.status(status).send(body);
+        return;
+    }
+    if (Number.isNaN(maxLong)) {
+        const { status, body } = createErrorInvalidURLParameter('maxLong');
+        res.status(status).send(body);
         return;
     }
 
     const { data, error } = await supabase.rpc('potholes_in_view', {
-        min_lat: Number(minLat),
-        min_long: Number(minLong),
-        max_lat: Number(maxLat),
-        max_long: Number(maxLong),
+        min_lat: minLat,
+        min_long: minLong,
+        max_lat: maxLat,
+        max_long: maxLong,
     });
 
     if (error) {
-        const { status, body } = createSupabaseError();
-        res.status(status);
-        res.send(body);
+        const { status, body } = createErrorResourceRetrevial();
+        res.status(status).send(body);
         return;
     }
 
-    const { status, body } = createPotholeGetSuccess(data || []);
-    res.status(status);
-    res.send(body);
+    if (data.length === 0) {
+        const { status, body } = createErrorResourceNonexistant();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { status, body } = createSuccessResourcesRetrieved(data);
+    res.status(status).send(body);
     return;
 });
 

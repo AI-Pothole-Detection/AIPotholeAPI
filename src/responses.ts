@@ -111,7 +111,7 @@ export function createErrorResourceNonexistant(): ResponseInfo {
         body: {
             type: 'Error',
             code: 6,
-            message: 'The specified resource does not exist.',
+            message: 'No resource matching the given parameters exists.',
         },
     };
 }
