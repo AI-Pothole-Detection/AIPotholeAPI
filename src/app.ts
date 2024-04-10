@@ -7,7 +7,7 @@ import {
     createResourceCreationFailureInternal,
     createResourceCreationSuccess,
     createIncrementSuccess,
-    createInvalidBase64Error,
+    createErrorUnparsableBase64,
     createInvalidIDParameter,
     createInvalidJSONBodyElement,
     createInvalidQueryParametersError,
@@ -188,7 +188,7 @@ app.post('/images', async (req, res) => {
     const encoding = verifyBase64(rawEncoding);
 
     if (encoding === null) {
-        const { status, body } = createInvalidBase64Error();
+        const { status, body } = createErrorUnparsableBase64();
         res.status(status).send(body);
         return;
     }
@@ -196,12 +196,12 @@ app.post('/images', async (req, res) => {
     const result = await createNewImageResource(potholeId, encoding);
     switch (result.outcome) {
         case 'creation error': {
-            const { status, body } = createResourceCreationFailureInternal();
+            const { status, body } = createResourceCreationInternalFailure();
             res.status(status).send(body);
             return;
         }
         case 'upload error': {
-            const { status, body } = createResourceCreationFailureInternal();
+            const { status, body } = createResourceCreationInternalFailure();
             res.status(status).send(body);
             return;
         }

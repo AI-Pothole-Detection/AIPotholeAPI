@@ -3,7 +3,8 @@
  *
  * CODES:
  *  1 - Resource creation success
- *  2 - Resource creation failure due to internal error
+ *  2 - Resource creation failure, our fault
+ *  3 - Provided Base64 could not be parsed, user's fault
  */
 
 import type { Image, Pothole } from './internal.types';
@@ -28,6 +29,7 @@ interface SuccessBody {
 
 type ResponseBody = ErrorBody | SuccessBody;
 
+// DONE
 export function createResourceCreationSuccess(image: Image): ResponseInfo {
     const { id } = image;
     return {
@@ -41,6 +43,7 @@ export function createResourceCreationSuccess(image: Image): ResponseInfo {
     };
 }
 
+// DONE
 export function createResourceCreationFailureInternal(): ResponseInfo {
     return {
         status: 500,
@@ -53,17 +56,26 @@ export function createResourceCreationFailureInternal(): ResponseInfo {
     };
 }
 
-export function createInvalidBase64Error(): ResponseInfo {
+export function createErrorUnparsableBase64(): ResponseInfo {
     return {
         status: 400,
         body: {
-            type: 'error',
-            error: {
-                code: 11,
-                message: 'Invalid base64 image encoding.',
-            },
+            type: 'Error',
+            code: 3,
+            message:
+                'The provided base64 could not be parsed. Please review base64 payload and try again.',
         },
     };
+    // return {
+    //     status: 400,
+    //     body: {
+    //         type: 'error',
+    //         error: {
+    //             code: 3,
+    //             message: 'Invalid base64 image encoding.',
+    //         },
+    //     },
+    // };
 }
 
 export function createInvalidIDParameter(): ResponseInfo {
