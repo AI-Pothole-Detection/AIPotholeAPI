@@ -17,43 +17,49 @@
  * code 13 : Image resource was successfully created
  */
 
-import type { Pothole } from './internal.types';
+import type { Image, Pothole } from './internal.types';
 
 interface ResponseInfo {
     status: number;
     body: ResponseBody;
 }
 
-type ResponseBody = ErrorResponseBody | SuccessResponseBody;
-
-interface ErrorResponseBody {
-    type: 'error';
-    error: {
-        code: number;
-        message: string;
-    };
+interface ErrorBody {
+    type: 'Error';
+    code: number;
+    message: string;
 }
 
-interface SuccessResponseBody {
-    type: 'success';
-    data: {
-        code: number;
-        message: string;
-        result?: any;
-    };
+interface SuccessBody {
+    type: 'Success';
+    code: number;
+    message: string;
+    data?: any;
 }
 
-export function createImageSuccess(id: number): ResponseInfo {
+type ResponseBody = ErrorBody | SuccessBody;
+
+export function createImageCreationSuccess(image: Image): ResponseInfo {
+    const { id, potholeId, createdAt, url } = image;
     return {
         status: 200,
         body: {
-            type: 'success',
-            data: {
-                code: 13,
-                message: `The image was successfully created with id ${id}`,
-            },
+            type: 'Success',
+            code: 13,
+            message: `The image was succesfully created with id ${id}`,
+            data: image,
         },
     };
+    // return {
+    //     status: 200,
+    //     body: {
+    //         type: 'success',
+    //         data: {
+    //             code: 13,
+    //             message: `The image was successfully created with id ${id}`,
+    //         },
+    //     },
+    // };
 }
 
 export function createFailedImageCreationError(): ResponseInfo {

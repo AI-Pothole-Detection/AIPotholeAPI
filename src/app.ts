@@ -5,7 +5,7 @@ import cors from 'cors';
 import {
     createAlertSuccess,
     createFailedImageCreationError,
-    createImageSuccess,
+    createImageCreationSuccess,
     createIncrementSuccess,
     createInvalidBase64Error,
     createInvalidIDParameter,
@@ -22,10 +22,7 @@ import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
 import { deduceAction, verifyBase64, verifyLatLong } from './request-handling';
 import { reportPothole } from './pothole-reporting';
-import {
-    createNewImageResource,
-    getImageResource,
-} from './resource-operations';
+import { createNewImageResource, getImageUrl } from './resource-operations';
 
 const app = express();
 const port = 3000;
@@ -178,7 +175,6 @@ app.get('/potholes', async (req, res) => {
 });
 
 app.post('/images', async (req, res) => {
-    console.log('HELLO!');
     const potholeId = Number(req.query.pothole);
 
     if (Number.isNaN(potholeId)) {
@@ -210,7 +206,7 @@ app.post('/images', async (req, res) => {
             return;
         }
         case 'creation success': {
-            const { status, body } = createImageSuccess(result.id);
+            const { status, body } = createImageCreationSuccess(result.image);
             res.status(status).send(body);
             return;
         }
@@ -234,7 +230,7 @@ app.get(`/images/:id`, async (req, res) => {
         return;
     }
 
-    const imageUrl = getImageResource(id);
+    const imageUrl = getImageUrl(id);
     res.status(200).send(imageUrl);
     return;
 });
@@ -276,7 +272,7 @@ app.get(`/images`, async (req, res) => {
     for (const element of data) {
         images.push({
             ...element,
-            url: getImageResource(element.id),
+            url: getImageUrl(element.id),
         });
     }
 

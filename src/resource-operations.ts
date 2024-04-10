@@ -1,3 +1,4 @@
+import type { Image } from './internal.types';
 import { supabase } from './supabase';
 
 import { decode } from 'base64-arraybuffer';
@@ -38,7 +39,7 @@ interface UploadError {
 
 interface CreationSuccess {
     outcome: 'creation success';
-    id: number;
+    image: Image;
 }
 
 type NewImageOutcome = CreationError | UploadError | CreationSuccess;
@@ -52,7 +53,7 @@ export async function createNewImageResource(
         .insert({
             pothole_id: potholeId,
         })
-        .select('id');
+        .select('id,createdAt:created_at');
 
     if (error) {
         return {
@@ -60,7 +61,7 @@ export async function createNewImageResource(
         };
     }
 
-    const id = data[0].id;
+    const { id, createdAt } = data[0];
 
     const path = await uploadImage(id, encoding);
 
@@ -72,11 +73,16 @@ export async function createNewImageResource(
 
     return {
         outcome: 'creation success',
-        id,
+        image: {
+            id,
+            potholeId,
+            createdAt,
+            url: getImageUrl(id),
+        },
     };
 }
 
-export function getImageResource(id: number) {
+export function getImageUrl(id: number) {
     const {
         data: { publicUrl },
     } = supabase.storage.from('images').getPublicUrl(`${id}.png`);
