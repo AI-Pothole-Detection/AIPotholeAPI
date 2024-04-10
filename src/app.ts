@@ -4,8 +4,8 @@ import cors from 'cors';
 
 import {
     createAlertSuccess,
-    createResourceCreationFailureInternal,
-    createResourceCreationSuccess,
+    createErrorResourceCreation,
+    createSuccessResourceCreated,
     createIncrementSuccess,
     createErrorUnparsableBase64,
     createInvalidIDParameter,
@@ -185,9 +185,11 @@ app.get('/potholes', async (req, res) => {
 app.post('/images', async (req, res) => {
     const potholeId = Number(req.query.pothole);
 
+    // Really simple check that we aren't dealing with a NaN
+    // this is acting as validation
+    // TODO: more rigorous validation check?
     if (Number.isNaN(potholeId)) {
-        // TODO: should be invalid query
-        const { status, body } = createInvalidIDParameter();
+        const { status, body } = createErrorInvalidURLParameter('potholeId');
         res.status(status).send(body);
         return;
     }
@@ -204,19 +206,17 @@ app.post('/images', async (req, res) => {
     const result = await createNewImageResource(potholeId, encoding);
     switch (result.outcome) {
         case 'creation error': {
-            const { status, body } = createResourceCreationInternalFailure();
+            const { status, body } = createErrorResourceCreation();
             res.status(status).send(body);
             return;
         }
         case 'upload error': {
-            const { status, body } = createResourceCreationInternalFailure();
+            const { status, body } = createErrorResourceCreation();
             res.status(status).send(body);
             return;
         }
         case 'creation success': {
-            const { status, body } = createResourceCreationSuccess(
-                result.image
-            );
+            const { status, body } = createSuccessResourceCreated(result.image);
             res.status(status).send(body);
             return;
         }

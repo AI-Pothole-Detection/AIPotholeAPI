@@ -36,7 +36,7 @@ interface SuccessBody {
 type ResponseBody = ErrorBody | SuccessBody;
 
 // DONE
-export function createResourceCreationSuccess(image: Image): ResponseInfo {
+export function createSuccessResourceCreated(image: Image): ResponseInfo {
     const { id } = image;
     return {
         status: 200,
@@ -50,7 +50,7 @@ export function createResourceCreationSuccess(image: Image): ResponseInfo {
 }
 
 // DONE
-export function createResourceCreationFailureInternal(): ResponseInfo {
+export function createErrorResourceCreation(): ResponseInfo {
     return {
         status: 500,
         body: {
@@ -75,6 +75,7 @@ export function createErrorUnparsableBase64(): ResponseInfo {
     };
 }
 
+// DONE
 export function createErrorInvalidURLParameter(
     parameter: string
 ): ResponseInfo {
@@ -88,6 +89,7 @@ export function createErrorInvalidURLParameter(
     };
 }
 
+// DONE
 export function createErrorResourceRetrevial(): ResponseInfo {
     return {
         status: 500,
@@ -100,6 +102,7 @@ export function createErrorResourceRetrevial(): ResponseInfo {
     };
 }
 
+// DONE
 export function createErrorResourceNonexistant(): ResponseInfo {
     return {
         status: 404,
@@ -111,6 +114,7 @@ export function createErrorResourceNonexistant(): ResponseInfo {
     };
 }
 
+// DONE
 export function createSuccessRetrevial(data: any): ResponseInfo {
     return {
         status: 200,
