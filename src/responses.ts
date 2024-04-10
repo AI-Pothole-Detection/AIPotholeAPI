@@ -40,7 +40,7 @@ interface SuccessBody {
 type ResponseBody = ErrorBody | SuccessBody;
 
 export function createImageCreationSuccess(image: Image): ResponseInfo {
-    const { id, potholeId, createdAt, url } = image;
+    const { id } = image;
     return {
         status: 200,
         body: {
