@@ -13,6 +13,7 @@
  *  7 - Resource was successfully retrieved
  *
  *  8 - Set of resources was successfully retrieved
+ *  9 - Resource could not be deleted
  */
 
 import type { Image, Pothole } from './internal.types';
@@ -129,6 +130,7 @@ export function createSuccessRetrevial(data: any): ResponseInfo {
     };
 }
 
+// DONE
 export function createSuccessResourcesRetrieved(data: any): ResponseInfo {
     return {
         status: 200,
@@ -138,6 +140,29 @@ export function createSuccessResourcesRetrieved(data: any): ResponseInfo {
             message:
                 'One or more resources were found matching the given parameters.',
             data,
+        },
+    };
+}
+
+export function createErrorResourceDeletion(): ResponseInfo {
+    return {
+        status: 500,
+        body: {
+            type: 'Error',
+            code: 9,
+            message:
+                'The specified resource could not be deleted due to an internal error.',
+        },
+    };
+}
+
+export function createSuccessResourceDeletion(): ResponseInfo {
+    return {
+        status: 200,
+        body: {
+            type: 'Success',
+            code: 10,
+            message: 'The specified resource was successfully deleted.',
         },
     };
 }

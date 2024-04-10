@@ -22,6 +22,8 @@ import {
     createErrorResourceNonexistant,
     createSuccessRetrevial,
     createSuccessResourcesRetrieved,
+    createErrorResourceDeletion,
+    createSuccessResourceDeletion,
 } from './responses';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
@@ -115,7 +117,7 @@ app.delete('/potholes', async (req, res) => {
     const id = Number(rawId);
 
     if (Number.isNaN(id)) {
-        const { status, body } = createInvalidQueryParametersError();
+        const { status, body } = createErrorInvalidURLParameter('id');
         res.status(status).send(body);
         return;
     }
@@ -124,15 +126,28 @@ app.delete('/potholes', async (req, res) => {
         .from('potholes')
         .select('id')
         .eq('id', id);
-    const { error } = await supabase.from('potholes').delete().eq('id', id);
 
-    if (error || existenceError || data.length === 0) {
-        const { status, body } = createResourceDeletionError();
+    if (existenceError) {
+        const { status, body } = createErrorResourceDeletion();
         res.status(status).send(body);
         return;
     }
 
-    const { status, body } = createResourceDeletionSuccess();
+    if (data.length === 0) {
+        const { status, body } = createErrorResourceNonexistant();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { error } = await supabase.from('potholes').delete().eq('id', id);
+
+    if (error) {
+        const { status, body } = createErrorResourceDeletion();
+        res.status(status).send(body);
+        return;
+    }
+
+    const { status, body } = createSuccessResourceDeletion();
     res.status(status).send(body);
     return;
 });
