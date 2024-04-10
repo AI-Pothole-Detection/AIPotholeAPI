@@ -1,20 +1,9 @@
 /**
  * Putting all the response codes here because I am a lazy bastard.
  *
- * code 0 : Not implemented error
- * code 1 : Missing parameter error
- * code 2 : Successfully created new pothole from report
- * code 3 : Successfully incremented pothole report count from report
- * code 4 : Given action is unsupported error
- * code 5 : Successfully said if an alert should appear
- * code 6 : Successfully retreived potholes
- * code 7 : Invalid query parameters error
- * code 8 : Could not delete specified resource
- * code 9 : Invalid JSON Body element
- * code 10 : Invalid id parameter
- * code 11 : Invalid Base64 encoding
- * code 12 : Image resource could not be created
- * code 13 : Image resource was successfully created
+ * CODES:
+ *  1 - Resource creation success
+ *  2 - Resource creation failure due to internal error
  */
 
 import type { Image, Pothole } from './internal.types';
@@ -39,28 +28,27 @@ interface SuccessBody {
 
 type ResponseBody = ErrorBody | SuccessBody;
 
-export function createImageCreationSuccess(image: Image): ResponseInfo {
+export function createResourceCreationSuccess(image: Image): ResponseInfo {
     const { id } = image;
     return {
         status: 200,
         body: {
             type: 'Success',
-            code: 13,
+            code: 1,
             message: `The image was successfully created with id ${id}.`,
             data: image,
         },
     };
 }
 
-export function createFailedImageCreationError(): ResponseInfo {
+export function createResourceCreationFailureInternal(): ResponseInfo {
     return {
         status: 500,
         body: {
-            type: 'error',
-            error: {
-                code: 12,
-                message: 'The image resource could not be created.',
-            },
+            type: 'Error',
+            code: 2,
+            message:
+                'The specified resource was not created due to an internal error.',
         },
     };
 }

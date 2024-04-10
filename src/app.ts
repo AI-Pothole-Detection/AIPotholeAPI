@@ -4,8 +4,8 @@ import cors from 'cors';
 
 import {
     createAlertSuccess,
-    createFailedImageCreationError,
-    createImageCreationSuccess,
+    createResourceCreationFailureInternal,
+    createResourceCreationSuccess,
     createIncrementSuccess,
     createInvalidBase64Error,
     createInvalidIDParameter,
@@ -196,17 +196,19 @@ app.post('/images', async (req, res) => {
     const result = await createNewImageResource(potholeId, encoding);
     switch (result.outcome) {
         case 'creation error': {
-            const { status, body } = createFailedImageCreationError();
+            const { status, body } = createResourceCreationFailureInternal();
             res.status(status).send(body);
             return;
         }
         case 'upload error': {
-            const { status, body } = createFailedImageCreationError();
+            const { status, body } = createResourceCreationFailureInternal();
             res.status(status).send(body);
             return;
         }
         case 'creation success': {
-            const { status, body } = createImageCreationSuccess(result.image);
+            const { status, body } = createResourceCreationSuccess(
+                result.image
+            );
             res.status(status).send(body);
             return;
         }
