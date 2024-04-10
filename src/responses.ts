@@ -46,7 +46,7 @@ export function createImageCreationSuccess(image: Image): ResponseInfo {
         body: {
             type: 'Success',
             code: 13,
-            message: `The image was succesfully created with id ${id}`,
+            message: `The image was successfully created with id ${id}.`,
             data: image,
         },
     };
