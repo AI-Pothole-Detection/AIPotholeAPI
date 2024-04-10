@@ -93,8 +93,8 @@ app.post('/potholes:action', async (req, res) => {
     }
 });
 
-app.delete('/potholes', async (req, res) => {
-    const { id: rawId } = req.query;
+app.delete('/potholes/:id', async (req, res) => {
+    const { id: rawId } = req.params;
     const id = Number(rawId);
 
     if (Number.isNaN(id)) {
