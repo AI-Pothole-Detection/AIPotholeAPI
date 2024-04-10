@@ -14,6 +14,12 @@
  *
  *  8 - Set of resources was successfully retrieved
  *  9 - Resource could not be deleted
+ *  10 - Successful resource deletion
+ *  11 - Unsupported action
+ *  12 - Invalid JSON element
+ *  13 - Successful alert response
+ *  14 - Resource modification success
+ *  15 - Resource modification failure
  */
 
 import type { Image, Pothole } from './internal.types';
@@ -39,15 +45,14 @@ interface SuccessBody {
 type ResponseBody = ErrorBody | SuccessBody;
 
 // DONE
-export function createSuccessResourceCreated(image: Image): ResponseInfo {
-    const { id } = image;
+export function createSuccessResourceCreated(data: any): ResponseInfo {
     return {
         status: 200,
         body: {
             type: 'Success',
             code: 1,
-            message: `The image was successfully created with id ${id}.`,
-            data: image,
+            message: `The resource was successfully created`,
+            data,
         },
     };
 }
@@ -167,188 +172,64 @@ export function createSuccessResourceDeletion(): ResponseInfo {
     };
 }
 
-export function createInvalidIDParameter(): ResponseInfo {
+export function createErrorUnsupportedAction(): ResponseInfo {
     return {
-        status: 400,
+        status: 404,
         body: {
-            type: 'error',
-            error: {
-                code: 10,
-                message: "Invalid parameter 'id'.",
-            },
+            type: 'Error',
+            code: 11,
+            message: `Unsupported action. Supported actions are ':report' and ':alert'.`,
         },
     };
 }
 
-export function createInvalidJSONBodyElement(
+export function createErrorInvalidJSONElement(
     invalidElement: string
 ): ResponseInfo {
     return {
         status: 400,
         body: {
-            type: 'error',
-            error: {
-                code: 9,
-                message: `Invalid JSON element '${invalidElement}' in request body`,
-            },
+            type: 'Error',
+            code: 12,
+            message: `Invalid JSON element '${invalidElement}' in request body`,
         },
     };
 }
 
-export function createPotholeGetSuccess(potholes: Pothole[]): ResponseInfo {
+export function createSuccessAlert(alert: boolean): ResponseInfo {
     return {
         status: 200,
         body: {
-            type: 'success',
+            type: 'Success',
+            code: 13,
+            message: 'Successfully checked for nearby potholes.',
             data: {
-                code: 6,
-                message: 'Successfully retrieved potholes.',
-                result: potholes,
+                alert,
             },
         },
     };
 }
 
-export function createResourceDeletionError(): ResponseInfo {
-    return {
-        status: 405,
-        body: {
-            type: 'error',
-            error: {
-                code: 7,
-                message: 'The requested resource could not be deleted.',
-            },
-        },
-    };
-}
-
-export function createResourceDeletionSuccess(): ResponseInfo {
-    return {
-        status: 405,
-        body: {
-            type: 'success',
-            data: {
-                code: 8,
-                message: 'The specified resource was successfully deleted.',
-            },
-        },
-    };
-}
-
-export function createInvalidQueryParametersError(): ResponseInfo {
-    return {
-        status: 400,
-        body: {
-            type: 'error',
-            error: {
-                code: 7,
-                message: 'Could not parse query parameters.',
-            },
-        },
-    };
-}
-
-export function createInvalidActionFormatError(): ResponseInfo {
-    return {
-        status: 422,
-        body: {
-            type: 'error',
-            error: {
-                code: 5,
-                message:
-                    "Invalid action format. Actions must follow the format '.../...:<action>'.",
-            },
-        },
-    };
-}
-
-export function createUnsupportedActionError(): ResponseInfo {
-    return {
-        status: 404,
-        body: {
-            type: 'error',
-            error: {
-                code: 4,
-                message: `Unsupported action. Supported actions are ':report' and ':alert'.`,
-            },
-        },
-    };
-}
-
-export function createPotholeCreationSuccess(id: number): ResponseInfo {
+export function createSuccessResourceModified(data: any): ResponseInfo {
     return {
         status: 200,
         body: {
-            type: 'success',
-            data: {
-                code: 2,
-                message: `Successfully created pothole with id ${id}.`,
-            },
+            type: 'Success',
+            code: 14,
+            message: 'The specified resource was modified as requested.',
+            data,
         },
     };
 }
 
-export function createAlertSuccess(alert: boolean): ResponseInfo {
-    return {
-        status: 200,
-        body: {
-            type: 'success',
-            data: {
-                code: 5,
-                message: 'Successfully checked for nearby potholes.',
-                result: {
-                    alert,
-                },
-            },
-        },
-    };
-}
-
-export function createIncrementSuccess(id: number): ResponseInfo {
-    return {
-        status: 200,
-        body: {
-            type: 'success',
-            data: {
-                code: 3,
-                message: `Successfully incremented pothole with id ${id}.`,
-            },
-        },
-    };
-}
-
-export function createSupabaseError(): ResponseInfo {
+export function createErrorResourceModification(): ResponseInfo {
     return {
         status: 500,
         body: {
-            type: 'error',
-            error: {
-                code: 2,
-                message: "Something went wrong on Supabase's end.",
-            },
+            type: 'Error',
+            code: 15,
+            message:
+                'The specified resource was not modified due to an internal error.',
         },
     };
 }
-
-export function createMissingBodyElementError(
-    missingParameter: string
-): ResponseInfo {
-    return {
-        status: 422,
-        body: {
-            type: 'error',
-            error: {
-                code: 1,
-                message: `Missing parameter '${missingParameter}'.`,
-            },
-        },
-    };
-}
-
-export const notImplementedResponse = {
-    type: 'error',
-    error: {
-        code: 0,
-        message: 'Not implemented.',
-    },
-};

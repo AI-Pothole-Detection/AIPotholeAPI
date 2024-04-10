@@ -3,6 +3,8 @@ export interface Pothole {
     lat: number;
     long: number;
     reports: number;
+    createdAt: string;
+    lastReportedAt: string;
 }
 
 export interface Image {

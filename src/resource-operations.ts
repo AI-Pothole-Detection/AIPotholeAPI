@@ -1,5 +1,4 @@
-import type { Image } from './internal.types';
-import { createPotholeCreationSuccess } from './responses';
+import type { Image, Pothole } from './internal.types';
 import { supabase } from './supabase';
 
 import { decode } from 'base64-arraybuffer';
@@ -17,17 +16,35 @@ import { decode } from 'base64-arraybuffer';
 export async function createNewPothole(
     lat: number,
     long: number
-): Promise<number | null> {
+): Promise<Pothole | undefined> {
     const { data, error } = await supabase
         .from('potholes')
         .insert({ location: `POINT(${long} ${lat})` })
-        .select('id');
+        .select(
+            'id,createdAt:created_at,lastReportedAt:last_reported_at,expiresAt:expires_at,reports'
+        );
 
     if (error) {
-        return null;
+        return undefined;
     }
 
-    return data[0].id;
+    return { ...data[0], lat, long };
+}
+
+export async function getPotholeById(id: number) {
+    const { data, error } = await supabase
+        .from('potholes')
+        .select(
+            'id,createdAt:created_at,lastReportedAt:last_reported_at,expiresAt:expires_at,reports'
+        )
+        .eq('id', id);
+    if (error) {
+        return undefined;
+    }
+    if (data.length === 0) {
+        return null;
+    }
+    return data[0];
 }
 
 interface CreationError {

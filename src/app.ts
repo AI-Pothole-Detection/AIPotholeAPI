@@ -3,20 +3,12 @@ import express from 'express';
 import cors from 'cors';
 
 import {
-    createAlertSuccess,
+    createSuccessAlert,
     createErrorResourceCreation,
     createSuccessResourceCreated,
-    createIncrementSuccess,
     createErrorUnparsableBase64,
-    createInvalidIDParameter,
-    createInvalidJSONBodyElement,
-    createInvalidQueryParametersError,
-    createPotholeCreationSuccess,
-    createPotholeGetSuccess,
-    createResourceDeletionError,
-    createResourceDeletionSuccess,
-    createSupabaseError,
-    createUnsupportedActionError,
+    createErrorInvalidJSONElement,
+    createErrorUnsupportedAction,
     createErrorInvalidURLParameter,
     createErrorResourceRetrevial,
     createErrorResourceNonexistant,
@@ -24,6 +16,8 @@ import {
     createSuccessResourcesRetrieved,
     createErrorResourceDeletion,
     createSuccessResourceDeletion,
+    createSuccessResourceModified,
+    createErrorResourceModification,
 } from './responses';
 import { shouldAlert } from './advanced-alerting';
 import { supabase } from './supabase';
@@ -39,37 +33,22 @@ import type { Image } from './internal.types';
 const app = express();
 const port = 3000;
 
-// This a JSON API fr fr no cap on a stack
 app.use(express.json({ limit: '500mb' }));
 app.use(cors());
 
-interface ActionBody {
-    // i love typescript, but having absolutely 0 type safety when
-    // interacting with over-the-wire JSON input is really,
-    // really really annoying. Rust rewrite when ?? 🦀👀
-    longitude: any;
-    latitude: any;
-}
-
-// Endpoint for our weirder endpoints.
-// Naming is based of API Design Patterns, it's there
-// to signify that these are not normal RESTful endpoints,
-// but have side effects.
-//
-// Supported actions right now are `:report` and `:alert`
 app.post('/potholes:action', async (req, res) => {
     const { latitude: unverifiedLat, longitude: unverifiedLong } = req.body;
 
     const { lat, long } = verifyLatLong(unverifiedLat, unverifiedLong);
 
     if (lat === null) {
-        const { status, body } = createInvalidJSONBodyElement('latitude');
+        const { status, body } = createErrorInvalidJSONElement('latitude');
         res.status(status).send(body);
         return;
     }
 
     if (long === null) {
-        const { status, body } = createInvalidJSONBodyElement('longitude');
+        const { status, body } = createErrorInvalidJSONElement('longitude');
         res.status(status).send(body);
         return;
     }
@@ -78,14 +57,14 @@ app.post('/potholes:action', async (req, res) => {
     const action = deduceAction(rawAction);
 
     if (action === undefined) {
-        const { status, body } = createUnsupportedActionError();
+        const { status, body } = createErrorUnsupportedAction();
         res.status(status).send(body);
         return;
     }
 
     if (action === 'alert') {
         const alert = await shouldAlert(lat, long);
-        const { body, status } = createAlertSuccess(alert);
+        const { body, status } = createSuccessAlert(alert);
         res.status(status).send(body);
         return;
     }
@@ -93,19 +72,21 @@ app.post('/potholes:action', async (req, res) => {
     const reportOutcome = await reportPothole(lat, long);
     switch (reportOutcome.outcome) {
         case 'creation': {
-            const { status, body } = createPotholeCreationSuccess(
-                reportOutcome.id
+            const { status, body } = createSuccessResourceCreated(
+                reportOutcome.pothole
             );
             res.status(status).send(body);
             return;
         }
         case 'increment': {
-            const { status, body } = createIncrementSuccess(reportOutcome.id);
+            const { status, body } = createSuccessResourceModified(
+                reportOutcome.pothole
+            );
             res.status(status).send(body);
             return;
         }
         case 'error': {
-            const { status, body } = createSupabaseError();
+            const { status, body } = createErrorResourceModification();
             res.status(status).send(body);
             return;
         }
